@@ -5,28 +5,26 @@ fun main() {
     val addedPost2 = WallService.add(newPost2)
     println(newPost)
     println(newPost2)
-
     val audio = Audio(id = 1, ownerId = 1, artist = "Artist", title = "Song", duration = 240)
     val audioAttachment = AudioAttachment(audio)
-
     val postWithAttachments = Post(
         ownerId = 5,
-        attachments = listOf( audioAttachment) // Передаем список вложений
+        attachments = listOf(audioAttachment) // Передаем список вложений
     )
-
     val addedPostWithAttachments = WallService.add(postWithAttachments)
-    
     println(postWithAttachments)
-
+    val newComment = WallService.createComment(1,Comment())
+    println(newComment)
 }
 
-data class Post (
+
+data class Post(
     var id: Int = 0, //идентификатор записи
     val ownerId: Int = 0, // ид владельца стены
     val fromId: Int = 0, // Идентификатор автора записи от чьего имени опубликована запись
     val date: Int = 0, //   Время публикации записи в формате unixtime.
     val text: String? = "0",//    Текст записи.
-    val comments: Comments = Comments(),//Информация о комментариях к записи, объект с полями
+    val comments: Comment = Comment(),//Информация о комментариях к записи, объект с полями
     val postType: String = "0", //    Тип записи, может принимать следующие значения: post, copy, reply, postpone, suggest
     val canPin: Boolean = false,//    Информация о том, может ли текущий пользователь закрепить запись (1 — может, 0 — не может).
     val canDelete: Boolean = false, //Информация о том, может ли текущий пользователь удалить запись (1 — может, 0 — не может).
@@ -34,16 +32,35 @@ data class Post (
     val attachments: List<Attachment> = emptyList() // Список вложений
 )
 
-class Comments(
+class Comment(
     val count: Int = 0, // — количество комментариев;
     val canPost: Boolean = false, //— информация о том, может ли текущий пользователь комментировать запись (1 — может, 0 — не может);
     val groupsCanPost: Boolean = false, //— информация о том, могут ли сообщества комментировать запись;
     val canClose: Boolean = false, //— может ли текущий пользователь закрыть комментарии к записи;
     val canOpen: Boolean = false  //— может ли текущий пользователь открыть комментарии к записи.
 )
+{
+    override fun toString(): String {
+        return "Comment ($count, $canPost, $groupsCanPost, $canClose, $canOpen)"
+    }
+}
+class PostNotFoundException (message: String) :RuntimeException(message)
 
 object WallService {
     private var posts = emptyArray<Post>()
+    private var comments = emptyArray<Comment>()
+
+    fun createComment(postId: Int, comment: Comment): Comment {
+
+        for ((index, post) in posts.withIndex()) {
+            if (post.id == postId) {
+                comments += comment
+                return comments.last()
+            }
+        }
+        throw PostNotFoundException("No post with id $postId")
+    }
+
     fun add(post: Post): Post {
         posts += post
         post.id = if (posts.isEmpty()) 1 else posts.maxOf { it.id } + 1
@@ -56,7 +73,7 @@ object WallService {
         fromId: Int,
         date: Int,
         text: String,
-        comments: Comments = Comments(),
+        comments: Comment = Comment(),
         postType: String,
         canPin: Boolean,
         canDelete: Boolean,
@@ -83,6 +100,7 @@ object WallService {
         return false
     }
 }
+
 abstract class Attachment(val type: String)
 
 data class Audio(
@@ -92,6 +110,7 @@ data class Audio(
     val title: String = "0",  //Название композиции.
     val duration: Int = 0  //Длительность аудиозаписи в секундах.
 ) {}
+
 class AudioAttachment(val photo: Audio) : Attachment(type = "audio")
 
 data class Video(
@@ -101,6 +120,7 @@ data class Video(
     val description: String = "0", //Текст описания видеозаписи.
     val duration: Int = 0//Длительность ролика в секундах.
 ) {}
+
 class VideoAttachment(val photo: Video) : Attachment(type = "video")
 
 data class File(
@@ -110,6 +130,7 @@ data class File(
     val size: Int = 0,// Размер файла в байтах.
     val ext: String = "0" //Расширение файла
 ) {}
+
 class FileAttachment(val photo: File) : Attachment(type = "file")
 
 data class Photo(
@@ -120,6 +141,7 @@ data class Photo(
     val userId: Int = 0, //Идентификатор пользователя, загрузившего фото (если фотография размещена в сообществе). Для фотографий, размещенных от имени сообщества, user_id = 100.
     val text: String = "0"//Текст описания фотографии.
 ) {}
+
 class PhotoAttachment(val photo: Photo) : Attachment(type = "photo")
 
 data class Sticker(
@@ -129,4 +151,5 @@ data class Sticker(
     val productId: Int = 0,// Идентификатор набора
     val isAllowed: Boolean = false//Информация о том, доступен ли стикер
 ) {}
+
 class StickerAttachment(val photo: Sticker) : Attachment(type = "sticker")
